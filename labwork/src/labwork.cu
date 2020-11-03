@@ -170,17 +170,26 @@ void Labwork::labwork2_GPU() {
 }
 
 void Labwork::labwork3_GPU() {
-    // Calculate number of pixels
-
-    // Allocate CUDA memory    
-
+     uchar3 *devInput;
+     uchar3 *devGray;
+     uchar3 *devOutput;                                                                                                                                                     // Calculate number of pixels
+    int pixelCount = inputImage->width * inputImage->height;
+    char *hostInput = inputImage->buffer;
+    outputImage = static_cast<char *>(malloc(pixelCount * 3));
+    // Allocate CUDA memory
+        cudaMalloc(&devInput, pixelCount *sizeof(uchar3));
+        cudaMalloc(&devGray, pixelCount *sizeof(float));
     // Copy CUDA Memory from CPU to GPU
-
+        cudaMemcpy(devInput, hostInput,pixelCount *sizeof(uchar3),cudaMemcpyHostToDevice);
+        rgb2grayCUDA<<<dimGrid, dimBlock>>>(devInput, devGray, regionSize);
     // Processing
+        int blockSize = 64;
+        int numBlock = pixelCount / blockSize;
+        grayscale<<<numBlock, blockSize>>>(devInput, devOutput);
 
-    // Copy CUDA Memory from GPU to CPU
-
+    // Copy CUDA Memory from GPU to CPU                                                                                                                                         cudaMemcpy(hostGray, devGray,pixelCount *sizeof(float),cudaMemcpyDeviceToHost);
     // Cleaning
+        cudaFree(devInput);
 }
 
 void Labwork::labwork4_GPU() {
