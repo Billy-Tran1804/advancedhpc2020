@@ -280,6 +280,38 @@ void Labwork::labwork5_CPU() {
 	
 }
 
+// write a blur filter for shared memory
+__global__ void blur(uchar3* input, uchar3* output, int* filter, int imageWidth, int imageHeight){
+    int tidx = threadIdx.x + blockIdx.x * blockDim.x;
+    int tidy = threadIdx.y + blockIdx.y * blockDim.y;
+    if(tidx >= imageWidth || tidy >= imageHeight) return;
+    int tid = tidx + tidy * imageWidth;
+
+    __shared__ int s[49];
+    int localtid = threadIdx.x + threadIdx.y * blockDim.x;
+    if (localtid < 49){
+        s[localtid] = filter[localtid];
+    }
+    __syncthreads();
+
+    int sum = 0; // sum is for normalization
+    int constant = 0;
+    for(int j=-3; j < 3; j++){
+        for(int i=-3; i < 3; i++){
+            int rows = tidx + i;
+            int columns = tidy + j;
+            if( rows < 0 || rows >= imageWidth || columns < 0 || columns >= imageHeight) continue;
+            int tid = rows + columns * imageWidth;
+            unsigned char pixelValue = (input[tid].x + input[tid].y +input[tid].z) / 3;
+            int coefficient = s[(j+3)*7+i+3];
+            sum += pixelValue*coefficient;
+            constant += coefficient;
+        }
+    }
+    sum /= constant;
+    output[tid].z = output[tid].y = output[tid].x = sum;
+}
+
 void Labwork::labwork5_GPU(bool shared) {
     int filter[] = {0,0,1,2,1,0,0,
                         0,3,13,22,13,3,0,
