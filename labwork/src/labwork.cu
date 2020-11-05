@@ -246,7 +246,7 @@ void Labwork::labwork4_GPU() {
 }
 
 void Labwork::labwork5_CPU() {
-        int w = inpuImage->width;
+        int w = inputImage->width;
 	int h = inputImage->height;                                                                                                                                            
 	//convert input image into grayscale
         labwork1_CPU;
@@ -281,6 +281,44 @@ void Labwork::labwork5_CPU() {
 }
 
 void Labwork::labwork5_GPU(bool shared) {
+    int filter[] = {0,0,1,2,1,0,0,
+                        0,3,13,22,13,3,0,
+                        1,13,59,97,59,13,1,
+                        2,22,97,159,97,22,2,
+                        1,13,59,97,59,13,1,
+                        0,3,13,22,13,3,0,
+                        0,0,1,2,1,0,0};
+    int *share;
+    // Calculate number of pixels
+    int pixelCount = inputImage->width * inputImage->height;
+    
+    dim3 blockSize = dim3(32, 32);
+    dim3 gridSize = dim3((inputImage->width + blockSize.x -1) / blockSize.x, (inputImage->height + blockSize.y -1) / blockSize.y);
+
+    // Allocate CUDA memory
+    uchar3 *devInput;
+    uchar3 *devOutput;
+    cudaMalloc(&devInput, pixelCount *sizeof(uchar3));
+    cudaMalloc(&devOutput, pixelCount *sizeof(uchar3));
+    cudaMalloc(&share, sizeof(filter));
+    // allocate memory for the output on the host
+    outputImage = static_cast<char *>(malloc(pixelCount * sizeof(uchar3)));  
+
+    // Copy InputImage from CPU (host) to GPU (device)
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * sizeof(uchar3),cudaMemcpyHostToDevice);
+
+    // Copy Kernel into shared memory
+    cudaMemcpy(share, filter, sizeof(kernel), cudaMemcpyHostToDevice);
+
+    blur<<<gridSize, blockSize>>>(devInput, devOutput, share, inputImage->width, inputImage->height);
+
+    // Copy CUDA Memory from GPU to CPU
+    cudaMemcpy(outputImage, devOutput, pixelCount * sizeof(uchar3),cudaMemcpyDeviceToHost);   
+
+    // // Cleaning
+    cudaFree(devInput);
+    cudaFree(devOutput);
+    cudaFree(share);
 }
 
 void Labwork::labwork6_GPU() {
