@@ -268,13 +268,13 @@ void Labwork::labwork5_CPU() {
 		     int sum = 0; // sum is for normalization 
 			for(int j=-3; j <= 3; j++){                                                                                                                                                 
 			     for(int i=-3; i <= 3; i++) {                                                                                                                    
-                        sum += grayImage[((row + j) * w + col + i) * 3] * filter[(j + 3)* 7 + i + 3];
+                        sum += grayImage[((rows + j) * w + col + i) * 3] * filter[(j + 3)* 7 + i + 3];
                         }
                 }                                                                                                                                                                       
 		     sum /= 1003;                                                                                                                                                          
-		     outputImage[(row * w + col) * 3] = sum; 
-		     outputImage[(row * w + col) * 3 + 1] = sum; 
-		     outputImage[(row * w + col) * 3 + 2] = sum; 
+		     outputImage[(rows * w + col) * 3] = sum; 
+		     outputImage[(rows * w + col) * 3 + 1] = sum; 
+		     outputImage[(rows * w + col) * 3 + 2] = sum; 
 	     }
 	}
 	
@@ -340,7 +340,7 @@ void Labwork::labwork5_GPU(bool shared) {
     cudaMemcpy(devInput, inputImage->buffer, pixelCount * sizeof(uchar3),cudaMemcpyHostToDevice);
 
     // Copy Kernel into shared memory
-    cudaMemcpy(share, filter, sizeof(kernel), cudaMemcpyHostToDevice);
+    cudaMemcpy(share, filter, sizeof(filter), cudaMemcpyHostToDevice);
 
     blur<<<gridSize, blockSize>>>(devInput, devOutput, share, inputImage->width, inputImage->height);
 
@@ -353,6 +353,20 @@ void Labwork::labwork5_GPU(bool shared) {
     cudaFree(share);
 }
 
+__global__ void binarization(uchar3* input, uchar3* output, int imageWidth, int imageHeight, int thresholdValue){
+    int tidx = threadIdx.x + blockIdx.x * blockDim.x;
+    int tidy = threadIdx.y + blockIdx.y * blockDim.y;
+    if(tidx >= imageWidth || tidy >= imageHeight) return;
+    int tid = tidx + tidy * imageWidth;
+    
+    unsigned char binary = (input[tid].x + input[tid].y + input[tid].z) / 3;
+    if (binary > thresholdValue){
+        binary = 255;
+    } else {
+        binary = 0;
+    }
+    output[tid].z = output[tid].y = output[tid].x = binary;
+}
 void Labwork::labwork6_GPU() {
 }
 
