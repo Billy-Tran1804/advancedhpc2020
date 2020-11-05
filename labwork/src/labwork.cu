@@ -367,7 +367,44 @@ __global__ void binarization(uchar3* input, uchar3* output, int imageWidth, int 
     }
     output[tid].z = output[tid].y = output[tid].x = binary;
 }
+
+__global__ void brightness(uchar3* input, uchar3* output, int imageWidth, int imageHeight, int brightnessValue){
+    int tidx = threadIdx.x + blockIdx.x * blockDim.x;
+    int tidy = threadIdx.y + blockIdx.y * blockDim.y;
+    if(tidx >= imageWidth || tidy >= imageHeight) return;
+    int tid = tidx + tidy * imageWidth;
+    
+    unsigned char binary = (input[tid].x + input[tid].y + input[tid].z) / 3;
+    // unsigned char increase = binary + brightnessValue;
+    // if (increase > 255){
+    //     increase = 255;
+    // } else {
+    //     increase = 0;
+    // }
+    binary += brightnessValue;
+    output[tid].z = output[tid].y = output[tid].x = binary;
+
+}
+
+__global__ void blending(uchar3* input0, uchar3* input1, uchar3* output, int imageWidth, int imageHeight, float weightValue){
+    int tidx = threadIdx.x + blockIdx.x * blockDim.x;
+    int tidy = threadIdx.y + blockIdx.y * blockDim.y;
+    if(tidx >= imageWidth || tidy >= imageHeight) return;
+    int tid = tidx + tidy * imageWidth;
+
+    // unsigned char binary = (input0[tid].x + input0[tid].y + input0[tid].z) / 3;
+    // unsigned char binary2 = (input1[tid].x + input1[tid].y + input1[tid].z) / 3;
+    // binary = weightValue*binary + (1-weightValue)*binary2;
+    float binary = (input0[tid].x + input0[tid].y + input0[tid].z) / 3;
+    float binary1 = (input1[tid].x + input1[tid].y + input1[tid].z) / 3;
+    float totalbinary = (binary * weightValue) + binary1 * (1 - weightValue);
+
+    output[tid].z = output[tid].y = output[tid].x = totalbinary; 
+}
+
+
 void Labwork::labwork6_GPU() {
+
 }
 
 void Labwork::labwork7_GPU() {
