@@ -250,7 +250,7 @@ void Labwork::labwork5_CPU() {
 	int h = inputImage->height;                                                                                                                                            
 	//convert input image into grayscale
         labwork1_CPU;
-        unsigned char *grayImage = outputImage;
+        char *grayImage = outputImage;
         int pixelCount = w * h;
         outputImage = static_cast<unsigned char *>(malloc(pixelCount * 3));
         memset(outputImage, 0, pixelCount * 3);
@@ -405,6 +405,55 @@ __global__ void blending(uchar3* input0, uchar3* input1, uchar3* output, int ima
 
 void Labwork::labwork6_GPU() {
 
+    //6A - BINARIZATION
+    int threshold;
+    printf("Enter the threshold value: ");
+    scanf("%d", &threshold);
+    
+
+    //6B - BRIGHTNESS CONTROLL
+    int bright;
+    printf("Enter the threshold value: ");
+    scanf("%d", &bright);
+    
+
+    // 6C - BLENDING
+    char buffer[3];
+    printf("Enter the weight: ", buffer);
+    scanf("%s", buffer);
+    int weightValue = atoi(buffer);
+    
+    // Calculate number of pixels
+    int pixelCount = inputImage->width * inputImage->height;
+
+    // Allocate CUDA memory
+    uchar3 *devInput;
+    uchar3 *devOutput;
+    cudaMalloc(&devInput, pixelCount *sizeof(uchar3));
+    cudaMalloc(&devOutput, pixelCount *sizeof(uchar3));
+
+    // Copy InputImage from CPU (host) to GPU (device)
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * sizeof(uchar3),cudaMemcpyHostToDevice);
+
+    dim3 blockSize = dim3(32, 32);
+    // //dim3 gridSize = dim3(8, 8);
+    dim3 gridSize = dim3((inputImage->width + blockSize.x -1) / blockSize.x, (inputImage->height + blockSize.y -1) / blockSize.y);
+
+    // 6A - BINARIZATION
+    binarization<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height, threshold);
+    // 6B - BRIGHTNESS CONTROLL
+    brightness<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height, bright);
+    // 6C - BLENDING
+    blending<<<gridSize, blockSize>>>(devInput, devInput, devOutput, inputImage->width, inputImage->height, weightValue);
+
+    // Copy CUDA Memory from GPU to CPU
+    // allocate memory for the output on the host
+    outputImage = static_cast<char *>(malloc(pixelCount * sizeof(uchar3)));  
+    cudaMemcpy(outputImage, devOutput, pixelCount * sizeof(uchar3),cudaMemcpyDeviceToHost);   
+
+    // Cleaning
+    cudaFree(devInput);
+    cudaFree(devOutput);
 }
 
 void Labwork::labwork7_GPU() {
